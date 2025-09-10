@@ -1,0 +1,75 @@
+import logging
+import os
+import random
+import subprocess
+
+from .base import BasePlayer, BaseTask
+
+class FileTask(BaseTask):
+    def __init__(self, filename, sounds_path, max_play_time):
+        self.sounds_path = sounds_path
+        self.max_play_time = max_play_time
+        self.requested_filename = os.path.join(self.sounds_path, filename)
+        self.actual_filename = self._findfile(self.requested_filename)
+        self.command = None
+        if self.actual_filename:
+            base, ext = os.path.splitext(self.actual_filename)
+            if ext == '.mp3':
+                self.command = ['mpg123', '-q', '-m', self.actual_filename]
+            else:
+                self.command = ['play', '-q', self.actual_filename]
+
+    def _allfiles(self, path, exts=[".mp3", ".wav"]):
+        allfiles = []
+        for dirpath, dirnames, filenames in os.walk(path):
+            for filename in filenames:
+                base, ext = os.path.splitext(filename)
+                if ext in exts:
+                    allfiles.append(os.path.join(dirpath, filename))
+        return allfiles
+
+    def _findfile(self, filename):
+        if filename.endswith('/'):
+            # pick a random file from a directory
+            candidates = []
+            for f in self._allfiles(self.sounds_path):
+                if f.startswith(filename):
+                    candidates.append(f)
+            if len(candidates) == 0:
+                logging.error('No files matching %s' % (filename))
+                return
+            return random.choice(candidates)
+        else:
+            # single file requested
+            if filename in self._allfiles(self.sounds_path):
+                return filename
+            else:
+                logging.error('File %s not found' % (filename))
+                return
+
+    def play(self):
+        if self.command:
+            self.playback = subprocess.Popen(self.command)
+            try:
+                self.playback.wait(timeout=self.max_play_time)
+            except subprocess.TimeoutExpired:
+                try:
+                    self.playback.kill()
+                    self.playback.wait()
+                except AttributeError:
+                    pass                
+        self.playback = None
+
+    def abort(self):
+        try:
+            self.playback.kill()
+        except AttributeError:
+            pass
+
+class FilePlayer(BasePlayer):
+    def __init__(self, sounds_path, max_play_time=15):
+        self.sounds_path = sounds_path
+        self.max_play_time = max_play_time
+    def task(self, filename):
+        task = FileTask(filename, sounds_path=self.sounds_path, max_play_time=self.max_play_time)
+        return task

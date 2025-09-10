@@ -1,0 +1,77 @@
+import hashlib
+import os
+import subprocess
+import logging
+
+#import boto3
+
+from .base import BasePlayer, BaseTask
+
+class PollyTask(BaseTask):
+    def __init__(self, text, voice, cache_dir, max_play_time=15):
+        self.text = text
+        self.voice = voice
+        self.cache_dir = cache_dir
+        self.max_play_time = max_play_time
+        self.voice = voice[0].upper() + voice[1:]
+        self.hash = hashlib.sha1(text.encode()).hexdigest()
+        self.filename = "{}/{}-{}.mp3".format(self.cache_dir, self.voice, self.hash)
+        #self.client = boto3.client('polly')
+
+    def prepare(self):
+        if os.path.exists(self.filename):
+            logging.debug("polly: filename {} found".format(self.filename))
+            self.process = None
+        else:
+            logging.debug("polly: filename {} not found - requesting".format(self.filename))
+            if self.text.startswith('<speak>'):
+                logging.debug('polly: using SSML')
+                self.process = subprocess.Popen(["aws", "polly", "synthesize-speech", "--output-format", "mp3", "--voice-id", self.voice, "--text-type",  "ssml", "--text", self.text, self.filename])
+            else:
+                self.process = subprocess.Popen(["aws", "polly", "synthesize-speech", "--output-format", "mp3", "--voice-id", self.voice, "--text-type", "text", "--text", self.text, self.filename])
+
+    def is_ready(self):
+        if self.process:
+            if self.process.poll() is None:
+                return False
+        return True
+
+    def play(self):
+        if self.process:
+            logging.debug("play() waiting for process")
+            rc = self.process.wait()
+        logging.debug("play() calling playback command")
+        self.playback = subprocess.Popen(
+            ['mpg123', '-q', '-m', self.filename]
+        )
+        try:
+            result = self.playback.wait(timeout=self.max_play_time)
+            logging.debug("play() command returned {}".format(result))
+        except subprocess.TimeoutExpired:
+            logging.debug("play() timed out")
+            try:
+                self.playback.kill()
+                self.playback.wait()
+            except AttributeError:
+                pass
+        self.playback = None
+
+    def abort(self):
+        try:
+            self.process.terminate()
+        except AttributeError:
+            pass
+        try:
+            self.playback.kill()
+        except AttributeError:
+            pass
+
+class PollyPlayer(BasePlayer):
+    def __init__(self, cache_dir, default_voice, max_play_time=15):
+        self.cache_dir = cache_dir
+        self.default_voice = default_voice
+        self.max_play_time = max_play_time
+    def task(self, text, voice=None):
+        if voice is None:
+            voice = self.default_voice
+        return PollyTask(text, voice, self.cache_dir, max_play_time=self.max_play_time)

@@ -1,0 +1,5 @@
+paho-mqtt
+RPi.GPIO
+boto3
+
+#apt install python3-boto3
