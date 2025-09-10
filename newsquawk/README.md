@@ -16,6 +16,8 @@ all problems may be solved with a newer pi but THATS NOT THE POINT (allegedly)
 
 * Updated to use UV as a package manager, though syncing with requirements.txt seems to remove the module botocore for some reason even though it's still needed. If this happens, fix with `uv pip install boto3`.
 
+* Auto-update can sometimes fail if git-pull results in needing `git sparse-checkout reapply` - running this command and reloading will fix
+
 * Touching in any way, shape or form may cause painful and irreversible effects, to the pi or to you.
 
 *Last touched by vgorl 09/2025*
