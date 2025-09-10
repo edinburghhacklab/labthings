@@ -10,6 +10,8 @@ all problems may be solved with a newer pi but THATS NOT THE POINT (allegedly)
 
 * Auto updates self from this git, logic defined in `update.sh`, last update will be logged to `latest.log`. Includes reloading systemctl for modifying service file.
 
+* `latest.log` is available publically at http://squawk.hacklab/latest.log
+
 ## Notes
 
 * RPi.GPIO was modified locally at some point to support this older model of pi - library seems to work fine with updated version now as far as we can tell, but be warned (old library directory backed up just in case at RPi-backup.zip)
