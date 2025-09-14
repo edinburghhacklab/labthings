@@ -16,7 +16,7 @@ in
   };
   
   languages.python = {
-    version = "3.13";
+    version = "3.11";
     enable = true;
     uv = {
       enable = true;
